@@ -330,9 +330,11 @@ namespace IngameScript {
                     if(IsAngleCloseEnough(aimAngle, GetCurrentAngle(rotor))) {
                         // Do not rotate     
                     } else if(angleDiff > 0 && angleDiff <= 180 || angleDiff < -180) {
-                        rotor.TargetVelocity = 20;
+                        // TODO svs: TargetVelocity was 20. Use same unit?
+                        rotor.TargetVelocityRad = 20;
                     } else if(angleDiff > 180 || angleDiff < 0 && angleDiff >= -180) {
-                        rotor.TargetVelocity = -20;
+                        // TODO svs: TargetVelocity was -20. Use same unit?
+                        rotor.TargetVelocityRad = -20;
                     }
                 });
             }
@@ -349,7 +351,7 @@ namespace IngameScript {
                 rotors.ForEach(rotor => {
                     rotor.Enabled = true;
                     rotor.BrakingTorque = 448000;
-                    rotor.TargetVelocity = 0;
+                    rotor.TargetVelocityRad = 0;
                     rotor.Enabled = false;
                 });
             }
@@ -357,7 +359,7 @@ namespace IngameScript {
             private void UnlockRotors(List<IMyMotorStator> rotors) {
                 rotors.ForEach(rotor => {
                     rotor.Enabled = true;
-                    rotor.TargetVelocity = 0;
+                    rotor.TargetVelocityRad = 0;
                 });
             }
 
