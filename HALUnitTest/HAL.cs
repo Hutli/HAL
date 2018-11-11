@@ -7,6 +7,7 @@ using SpaceEngineers.Game.ModAPI.Ingame;
 using System.Linq;
 using VRageMath;
 using System.Text.RegularExpressions;
+using System.Collections;
 
 namespace IngameScript {
     public class Program : MyGridProgram {
@@ -32,7 +33,8 @@ namespace IngameScript {
         }
 
         private static readonly List<NameLike> typeTranslations = new List<NameLike> { new NameLike("AL", (x, y) => new Airlock(x, y)),
-                                                                                       new NameLike("RC", (x, y) => new RotationCockpit(x, y))};
+                                                                                       new NameLike("RC", (x, y) => new RotationCockpit(x, y)),
+                                                                                       new NameLike("TL", (x, y) => new TorpedoLauncher(x, y))};
         private static readonly List<string> delimitors = new List<string> { "I", "O" };
 
         private List<AccessLogicGroup> accessLogicGroups = new List<AccessLogicGroup>();
@@ -58,12 +60,12 @@ namespace IngameScript {
             //PrintStates();
         }
 
-        /*private void PrintStates() {
+        private void PrintStates() {
             AccessLogicGroup helper = new AccessLogicGroup("", GridTerminalSystem);
             List<IMyTextPanel> panels = helper.FindBlocksOfType<IMyTextPanel>("[HAL");
 
-            panels.ForEach(x => { x.WritePublicText(((Airlock)accessLogicGroups[1]).ToString()); x.ShowPublicTextOnScreen(); });
-        }*/
+            panels.ForEach(x => { x.WritePublicText(accessLogicGroups.Count().ToString()); x.ShowPublicTextOnScreen(); });
+        }
 
         private void RunAccessLogic(string argument) {
             bool autoRunScript = false;
@@ -168,6 +170,80 @@ namespace IngameScript {
             }
         }
 
+        private class TorpedoLauncher : AccessLogicGroup {
+            private struct TorpedoBlocks {
+                public List<IMySensorBlock> sensors;
+                public List<IMyThrust> thrusters;
+                public List<IMyTextPanel> panels;
+            };
+
+            private List<IMySensorBlock> _sensors;
+            private List<IMyThrust> _thrusters;
+            private List<IMyTextPanel> _panels;
+            private List<IMyGyro> _gyros;
+
+            public TorpedoLauncher(string nameLike, IMyGridTerminalSystem gridTerminalSystem) : base(nameLike, gridTerminalSystem) {
+                UpdateBlocks();
+                UpdateAccessLogic("");
+            }
+
+            override public void UpdateAccessLogic(string argument) {
+                List<MyDetectedEntityInfo> detectedEntities = new List<MyDetectedEntityInfo>();
+                _sensors.ForEach(x => {
+                    x.Enabled = false;
+                    x.Enabled = true;
+                    x.DetectEnemy = true;
+                    x.DetectFriendly = true;
+                    x.DetectNeutral = true;
+                    x.DetectLargeShips = true;
+                    x.DetectSmallShips = false;
+                    x.DetectStations = true;
+                    x.DetectPlayers = true;
+
+                    List<MyDetectedEntityInfo> tmpDetectedEntities = new List<MyDetectedEntityInfo>();
+                    x.DetectedEntities(tmpDetectedEntities);
+                    tmpDetectedEntities = tmpDetectedEntities.Where(y => !detectedEntities.TrueForAll(z => y.Name == z.Name)).ToList();
+                    detectedEntities.AddList(tmpDetectedEntities);
+                });
+
+                //EqualityComparer comparer = new EqualityComparer<MyDetectedEntityInfo>();
+                //detectedEntities = detectedEntities.Distinct().ToList();
+
+                string panelText = "";
+
+                detectedEntities.ForEach(y => {
+                    panelText += "[ ] " + y.Name + '\n';
+                });
+
+                _panels.ForEach(y => {
+                    y.WritePublicText(panelText, true);
+                    y.ShowPublicTextOnScreen();
+                });
+
+                _gyros.ForEach(x => {
+                    x.Roll = 90;
+                });
+            }
+
+            override public void UpdateBlocks() {
+                TorpedoBlocks newBlocks = FindTorpedoBlocksInGrid(_nameLike);
+
+                _sensors = newBlocks.sensors;
+                _thrusters = newBlocks.thrusters;
+                _panels = newBlocks.panels;
+            }
+
+            private TorpedoBlocks FindTorpedoBlocksInGrid(string nameLike) {
+                TorpedoBlocks torpedoGridBlocks = new TorpedoBlocks();
+
+                torpedoGridBlocks.sensors = FindBlocksOfType<IMySensorBlock>(nameLike + "]");
+                torpedoGridBlocks.thrusters = FindBlocksOfType<IMyThrust>(nameLike + "]");
+                torpedoGridBlocks.panels = FindBlocksOfType<IMyTextPanel>(nameLike + "]");
+
+                return torpedoGridBlocks;
+            }
+        }
+
         private class RotationCockpit : AccessLogicGroup {
             const int ANGLE_PRECISION = 2;
 
@@ -182,7 +258,7 @@ namespace IngameScript {
             }
 
             private struct RotationCockpitGridBlocks {
-                public List<IMyMotorStator> rotor;
+                public List<IMyMotorStator> rotors;
                 public List<IMyPistonBase> pistons;
             };
 
@@ -213,7 +289,7 @@ namespace IngameScript {
                 _airlock.UpdateBlocks();
 
                 _pistons = newBlocks.pistons;
-                _rotors = newBlocks.rotor;
+                _rotors = newBlocks.rotors;
             }
 
             override public void UpdateAccessLogic(string argument) {
@@ -301,10 +377,10 @@ namespace IngameScript {
                     + "\nAirlock state: " + _airlock.State;
             }
 
-            private RotationCockpitGridBlocks FindRotationCockpitBlocksInGrid(string nameLike) { // Warning: Function not general, should be changed   
+            private RotationCockpitGridBlocks FindRotationCockpitBlocksInGrid(string nameLike) {
                 RotationCockpitGridBlocks rotationCockpitGridBlocks = new RotationCockpitGridBlocks();
 
-                rotationCockpitGridBlocks.rotor = FindBlocksOfType<IMyMotorStator>(nameLike + "]");
+                rotationCockpitGridBlocks.rotors = FindBlocksOfType<IMyMotorStator>(nameLike + "]");
                 rotationCockpitGridBlocks.pistons = FindBlocksOfType<IMyPistonBase>(nameLike + "]");
 
                 return rotationCockpitGridBlocks;
@@ -330,9 +406,9 @@ namespace IngameScript {
                     if(IsAngleCloseEnough(aimAngle, GetCurrentAngle(rotor))) {
                         // Do not rotate     
                     } else if(angleDiff > 0 && angleDiff <= 180 || angleDiff < -180) {
-                        rotor.TargetVelocity = 20;
+                        rotor.TargetVelocityRPM = 20;
                     } else if(angleDiff > 180 || angleDiff < 0 && angleDiff >= -180) {
-                        rotor.TargetVelocity = -20;
+                        rotor.TargetVelocityRPM = -20;
                     }
                 });
             }
@@ -349,7 +425,7 @@ namespace IngameScript {
                 rotors.ForEach(rotor => {
                     rotor.Enabled = true;
                     rotor.BrakingTorque = 448000;
-                    rotor.TargetVelocity = 0;
+                    rotor.TargetVelocityRPM = 0;
                     rotor.Enabled = false;
                 });
             }
@@ -357,7 +433,7 @@ namespace IngameScript {
             private void UnlockRotors(List<IMyMotorStator> rotors) {
                 rotors.ForEach(rotor => {
                     rotor.Enabled = true;
-                    rotor.TargetVelocity = 0;
+                    rotor.TargetVelocityRPM = 0;
                 });
             }
 
