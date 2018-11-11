@@ -78,7 +78,7 @@ namespace HALUnitTest
             //}
         }
 
-        private void ReactOnSunCycleStatus(CycleStatus cycleStatus)
+        /*private void ReactOnSunCycleStatus(CycleStatus cycleStatus)
         {
             var solarPanels = FindBlocksOfType<IMySolarPanel>(NAME_LIKE);
             var stators = FindBlocksOfType<IMyMotorStator>(NAME_LIKE);
@@ -122,17 +122,17 @@ namespace HALUnitTest
             return cycleStatus;
         }
 
-        private double DegreesToRadians(double degrees) {
+        public double DegreesToRadians(double degrees) {
             return (Math.PI / 180) * degrees;
         }
 
-        private double RadiansToDegrees(double radians)
+        public double RadiansToDegrees(double radians)
         {
             return (180 / Math.PI) * radians;
-        }
+        }*/
 
         /// returns whether we have reached our aim angle
-        private bool RotateToAngle(IEnumerable<IMyMotorStator> stators, double angle)
+        /*private bool RotateToAngle(IEnumerable<IMyMotorStator> stators, double angle)
         {
             cycleStatus = CycleStatus.Rotating;
             var returnBool = true;
@@ -154,9 +154,9 @@ namespace HALUnitTest
                 }
             }
             return returnBool;
-        }
+        }*/
 
-        private void IncreaseRotation(IEnumerable<IMyMotorStator> stators, double increaseByDeg) {
+        /*private void IncreaseRotation(IEnumerable<IMyMotorStator> stators, double increaseByDeg) {
             var curAngleDeg = RadiansToDegrees(stators[0].Angle);
             RotateToAngle(stators, curAngleDeg + increaseByDeg);
         }
@@ -176,8 +176,134 @@ namespace HALUnitTest
             logger.Log($"Aim Angle: {aimAngle}");
             logger.Log($"Current Angle: {currentAngle}");
             return angleDiff <= ANGLE_PRECISION || angleDiff >= (360 - ANGLE_PRECISION);
-        }
+        }*/
         
+        public class SolarFarm
+        {
+            private readonly List<SolarFarmArm> _solarFarmArms;
+
+            public enum SolarFarmState
+            {
+                Ready,
+                Rotating
+            }
+
+            public SolarFarm(List<SolarFarmArm> solarFarmArms, double maxAngle, double minAngle)
+            {
+                _solarFarmArms = solarFarmArms;
+            }
+
+            public SolarFarmState Run()
+            {
+                return _solarFarmArms.Aggregate(SolarFarmState.Ready, (worker, next) => next.Run() == SolarFarmArm.SolarFarmArmState.Rotating ? SolarFarmState.Rotating : worker);
+            }
+        }
+
+        public class SolarFarmArm
+        {
+            private readonly double _minAngle;
+            private readonly double _maxAngle;
+            private readonly IMyMotorStator _stator;
+            private readonly List<IMySolarPanel> _solarPanels;
+            private double _powerProduction;
+            private double _inferredSunDirection;
+            private List<double> _previousDirections;
+
+            public SolarFarmArmState State { get; private set; }
+
+            public enum SolarFarmArmState
+            {
+                Ready,
+                Rotating
+            }
+
+            public SolarFarmArm(IMyMotorStator stator, List<IMySolarPanel> solarPanels, double minAngle, double maxAngle)
+            {
+                _stator = stator;
+                _solarPanels = solarPanels;
+                _minAngle = minAngle;
+                _maxAngle = maxAngle;
+                _previousDirections = new List<double>();
+                _powerProduction = double.NegativeInfinity;
+            }
+
+            public SolarFarmArmState Run()
+            {
+                var newPowerProduction = GetCurrentPowerProduction();
+
+                if (newPowerProduction < _powerProduction) {
+                    _previousDirections.Add(_inferredSunDirection);
+                    if (IsInLoop())
+                    {
+                        return State = SolarFarmArmState.Ready;
+                    }
+                    else
+                    {
+                        _inferredSunDirection = _inferredSunDirection * -1;
+                    }
+                }
+
+                _previousDirections.Add(_inferredSunDirection);
+                _powerProduction = newPowerProduction;
+
+                double statorPlusSun = _stator.Angle + _inferredSunDirection;
+                double newAngle = statorPlusSun > _maxAngle ? _minAngle : statorPlusSun < _minAngle ? _maxAngle : statorPlusSun;
+
+                RotateStatorToAngle(_stator, newAngle);
+                return State = SolarFarmArmState.Rotating;
+            }
+
+            private bool IsInLoop()
+            {
+                var count = _previousDirections.Count;
+                if (count > 2)
+                {
+                    if(_previousDirections[count - 1] == _previousDirections[count - 3]{
+                        return true;
+                    }
+                }
+                return false;
+            }
+
+            private double GetCurrentPowerProduction()
+            {
+                return _solarPanels.Aggregate(0.0, (worker, next) => worker + next.CurrentOutput);
+            }
+
+            private bool RotateStatorToAngle(IMyMotorStator stator, double angle)
+            {
+                if (!IsAngleCloseEnough(angle, currentAngle: RadiansToDegrees(x.Angle)))
+                {
+                    stator.Torque = STATOR_TORQUE;
+                    stator.TargetVelocity = stator.Angle > angle ? -STATOR_SLOW_RPM : STATOR_SLOW_RPM;
+                    return false;
+                }
+                else
+                {
+                    stator.BrakingTorque = STATOR_BREAKING_TORQUE;
+                    stator.TargetVelocity = 0;
+                    stator.BrakingTorque = STATOR_BREAKING_TORQUE;
+                    return true;
+                }
+            }
+
+            private bool IsAngleCloseEnough(double aimAngle, double currentAngle)
+            {
+                var angleDiff = Math.Abs(aimAngle - currentAngle);
+                return angleDiff <= ANGLE_PRECISION || angleDiff >= (360 - ANGLE_PRECISION);
+            }
+
+            private double DegreesToRadians(double degrees)
+            {
+                return (Math.PI / 180) * degrees;
+            }
+
+            private double RadiansToDegrees(double radians)
+            {
+                return (180 / Math.PI) * radians;
+            }
+        }
+
         public class Logger{
             private List<IMyTextPanel> _panels;
         
