@@ -23,7 +23,7 @@ namespace HALUnitTest
         const int STATOR_TORQUE = 1000000;
         const int STATOR_BREAKING_TORQUE = 1000;
         const int STATOR_SLOW_RPM = 1;
-        const string NAME_LIKE = "[SR3000]";
+        const string NAME_LIKE = "[SR3000";
         const UpdateFrequency UPDATE_FREQUENCY = UpdateFrequency.Update1;
 
         public Program()
@@ -33,7 +33,7 @@ namespace HALUnitTest
         }
 
         private double? currentAimAngle = null;
-        private double lastPowerOutput = 0.0;d
+        private double lastPowerOutput = 0.0;
 
         public enum CycleStatus {
             /// Sun is down, to rise
@@ -42,7 +42,7 @@ namespace HALUnitTest
             Rotating
         }
 
-        private CycleStatus cycleStatus = SunToRise;
+        //private CycleStatus cycleStatus = SunToRise;
 
         private Logger logger;
 
@@ -56,9 +56,9 @@ namespace HALUnitTest
 
             logger = new Logger(lcds);
 
-            cycleStatus = InferCycleStatus();
-            logger.Log($"sunCycleStatus: {cycleStatus}");
-            ReactOnSunCycleStatus(cycleStatus);
+            //cycleStatus = InferCycleStatus();
+            //logger.Log($"sunCycleStatus: {cycleStatus}");
+            //ReactOnSunCycleStatus(cycleStatus);
 
             //double angleDegress;
             //if (double.TryParse(argument, out angleDegress) && angleDegress <= 90 && angleDegress >= -90)
@@ -156,10 +156,10 @@ namespace HALUnitTest
             return returnBool;
         }*/
 
-        /*private void IncreaseRotation(IEnumerable<IMyMotorStator> stators, double increaseByDeg) {
-            var curAngleDeg = RadiansToDegrees(stators[0].Angle);
-            RotateToAngle(stators, curAngleDeg + increaseByDeg);
-        }
+        //private void IncreaseRotation(IEnumerable<IMyMotorStator> stators, double increaseByDeg) {
+        //    var curAngleDeg = RadiansToDegrees(stators[0].Angle);
+        //    RotateToAngle(stators, curAngleDeg + increaseByDeg);
+        //}
 
         public List<T> FindBlocksOfType<T>(string nameLike) where T : class
         {
@@ -170,13 +170,13 @@ namespace HALUnitTest
             return blocks.Where(x => ((IMyTerminalBlock)x).CustomName.Contains(nameLike)).ToList();
         }
 
-        private bool IsAngleCloseEnough(double aimAngle, double currentAngle)
-        {
-            var angleDiff = Math.Abs(aimAngle - currentAngle);
-            logger.Log($"Aim Angle: {aimAngle}");
-            logger.Log($"Current Angle: {currentAngle}");
-            return angleDiff <= ANGLE_PRECISION || angleDiff >= (360 - ANGLE_PRECISION);
-        }*/
+        //private bool IsAngleCloseEnough(double aimAngle, double currentAngle)
+        //{
+        //    var angleDiff = Math.Abs(aimAngle - currentAngle);
+        //    logger.Log($"Aim Angle: {aimAngle}");
+        //    logger.Log($"Current Angle: {currentAngle}");
+        //    return angleDiff <= ANGLE_PRECISION || angleDiff >= (360 - ANGLE_PRECISION);
+        //}
         
         public class SolarFarm
         {
@@ -197,6 +197,11 @@ namespace HALUnitTest
             {
                 return _solarFarmArms.Aggregate(SolarFarmState.Ready, (worker, next) => next.Run() == SolarFarmArm.SolarFarmArmState.Rotating ? SolarFarmState.Rotating : worker);
             }
+
+            /*private List<SolarFarmArm> CreateArms(List<IMySolarPanel> panels, List<IMyMotorStator> stators)
+            {
+                stators.Zip(panels, x => );
+            }*/
         }
 
         public class SolarFarmArm
@@ -258,7 +263,7 @@ namespace HALUnitTest
                 var count = _previousDirections.Count;
                 if (count > 2)
                 {
-                    if(_previousDirections[count - 1] == _previousDirections[count - 3]{
+                    if(_previousDirections[count - 1] == _previousDirections[count - 3]){
                         return true;
                     }
                 }
@@ -272,7 +277,7 @@ namespace HALUnitTest
 
             private bool RotateStatorToAngle(IMyMotorStator stator, double angle)
             {
-                if (!IsAngleCloseEnough(angle, currentAngle: RadiansToDegrees(x.Angle)))
+                if (!IsAngleCloseEnough(angle, currentAngle: RadiansToDegrees(stator.Angle)))
                 {
                     stator.Torque = STATOR_TORQUE;
                     stator.TargetVelocity = stator.Angle > angle ? -STATOR_SLOW_RPM : STATOR_SLOW_RPM;
