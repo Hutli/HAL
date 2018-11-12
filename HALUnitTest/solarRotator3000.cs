@@ -1,16 +1,14 @@
 ﻿#region pre-script
 using System;
 using System.Collections.Generic;
-using Sandbox.ModAPI.Interfaces;
 using Sandbox.ModAPI.Ingame;
 using SpaceEngineers.Game.ModAPI.Ingame;
 using System.Linq;
-using VRageMath;
 using System.Text.RegularExpressions;
 
 namespace HALUnitTest
 {
-    class SolarRotator3000 : MyGridProgram
+    internal sealed class Program : MyGridProgram
     {
         public void SetGridTerminalSystem(IMyGridTerminalSystem gridTerminalSystem)
         {
@@ -19,42 +17,57 @@ namespace HALUnitTest
         #endregion
         //To put your code in a PB copy from this comment...
 
-        const double ANGLE_PRECISION = 0.1;
-        const int STATOR_TORQUE = 1000000;
-        const int STATOR_BREAKING_TORQUE = 1000;
-        const int STATOR_SLOW_RPM = 1;
-        const string NAME_LIKE = "[SR3000";
-        const UpdateFrequency UPDATE_FREQUENCY = UpdateFrequency.Update1;
+        private const double AnglePrecision = 0.1;
+        private const int StatorTorque = 1000000;
+        private const int StatorBreakingTorque = 1000;
+        private const int StatorSlowRpm = 1;
+        private const string NameLike = "[SR3000";
+        private const double PlanetMinAngle = -85;
+        private const double PlanetMaxAngle = 85;
+        private const UpdateFrequency ErrorUpdateFrequency = UpdateFrequency.None;
+        private const UpdateFrequency IdleUpdateFrequency = UpdateFrequency.Update100;
+        private const UpdateFrequency WorkingUpdateFrequency = UpdateFrequency.Update1;
+        private readonly SolarFarm _solarFarm;
+        private readonly Logger _logger;
 
         public Program()
         {
             // Configure this program to run the Main method every 100 update ticks
-            Runtime.UpdateFrequency = UPDATE_FREQUENCY;
+            Runtime.UpdateFrequency = IdleUpdateFrequency;
+            _solarFarm = new SolarFarm(FindBlocksOfType<IMyMotorStator>(NameLike), FindBlocksOfType<IMySolarPanel>(NameLike), PlanetMinAngle, PlanetMaxAngle);
+            _logger = new Logger(FindBlocksOfType<IMyTextPanel>(NameLike));
         }
 
-        private double? currentAimAngle = null;
-        private double lastPowerOutput = 0.0;
+        //private double? currentAimAngle = null;
+        //private double lastPowerOutput = 0.0;
 
-        public enum CycleStatus {
+        /*public enum CycleStatus {
             /// Sun is down, to rise
             SunToRise,
             SunIsRising,
             Rotating
-        }
+        }*/
 
         //private CycleStatus cycleStatus = SunToRise;
 
-        private Logger logger;
-
         public void Main(string argument)
         {
-            var lcds = FindBlocksOfType<IMyTextPanel>(NAME_LIKE);
-            if (lcds == null)
+            var solarFarmState = _solarFarm.Run();
+            _logger.Clear();
+            _logger.Log($"Solar Farm State: {solarFarmState}");
+            switch (solarFarmState)
             {
-                return;
+                case SolarFarm.SolarFarmState.Ready:
+                    Runtime.UpdateFrequency = IdleUpdateFrequency;
+                    break;
+                case SolarFarm.SolarFarmState.Rotating:
+                    Runtime.UpdateFrequency = WorkingUpdateFrequency;
+                    break;
+                default:
+                    Runtime.UpdateFrequency = ErrorUpdateFrequency;
+                    _logger.Log("Unknown state, terminating execution");
+                    break;
             }
-
-            logger = new Logger(lcds);
 
             //cycleStatus = InferCycleStatus();
             //logger.Log($"sunCycleStatus: {cycleStatus}");
@@ -160,12 +173,11 @@ namespace HALUnitTest
         //    var curAngleDeg = RadiansToDegrees(stators[0].Angle);
         //    RotateToAngle(stators, curAngleDeg + increaseByDeg);
         //}
-
-        public List<T> FindBlocksOfType<T>(string nameLike) where T : class
+        private List<T> FindBlocksOfType<T>(string nameLike) where T : class
         {
-            List<T> blocks = new List<T>();
+            var blocks = new List<T>();
 
-            GridTerminalSystem.GetBlocksOfType<T>(blocks);
+            GridTerminalSystem.GetBlocksOfType(blocks);
 
             return blocks.Where(x => ((IMyTerminalBlock)x).CustomName.Contains(nameLike)).ToList();
         }
@@ -180,7 +192,7 @@ namespace HALUnitTest
         
         public class SolarFarm
         {
-            private readonly List<SolarFarmArm> _solarFarmArms;
+            private readonly IEnumerable<SolarFarmArm> _solarFarmArms;
 
             public enum SolarFarmState
             {
@@ -188,9 +200,9 @@ namespace HALUnitTest
                 Rotating
             }
 
-            public SolarFarm(List<SolarFarmArm> solarFarmArms, double maxAngle, double minAngle)
+            public SolarFarm(IEnumerable<IMyMotorStator> stators, IEnumerable<IMySolarPanel> solarPanels, double minAngle, double maxAngle)
             {
-                _solarFarmArms = solarFarmArms;
+                _solarFarmArms = CreateArms(stators, solarPanels, minAngle, maxAngle);
             }
 
             public SolarFarmState Run()
@@ -198,23 +210,28 @@ namespace HALUnitTest
                 return _solarFarmArms.Aggregate(SolarFarmState.Ready, (worker, next) => next.Run() == SolarFarmArm.SolarFarmArmState.Rotating ? SolarFarmState.Rotating : worker);
             }
 
-            /*private List<SolarFarmArm> CreateArms(List<IMySolarPanel> panels, List<IMyMotorStator> stators)
+            private static IEnumerable<SolarFarmArm> CreateArms(IEnumerable<IMyMotorStator> stators, IEnumerable<IMySolarPanel> solarPanels, double minAngle, double maxAngle)
             {
-                stators.Zip(panels, x => );
-            }*/
+                return stators.Select(stator =>
+                {
+                    var getGroupRegex = new Regex($"(?<={NameLike} ).*?(?=])");
+                    var group = getGroupRegex.Match(stator.Name);
+                    var groupTagRegex = new Regex($"({NameLike} {group}\\])");
+                    var filteredSolarPanels = solarPanels.Where(solarPanel => groupTagRegex.IsMatch(solarPanel.Name));
+                    return new SolarFarmArm(stator, filteredSolarPanels, minAngle, maxAngle);
+                });
+            }
         }
 
-        public class SolarFarmArm
+        private class SolarFarmArm
         {
             private readonly double _minAngle;
             private readonly double _maxAngle;
             private readonly IMyMotorStator _stator;
-            private readonly List<IMySolarPanel> _solarPanels;
+            private readonly IEnumerable<IMySolarPanel> _solarPanels;
             private double _powerProduction;
-            private double _inferredSunDirection;
-            private List<double> _previousDirections;
-
-            public SolarFarmArmState State { get; private set; }
+            private int _inferredSunDirection;
+            private List<int> _previousDirections;
 
             public enum SolarFarmArmState
             {
@@ -222,13 +239,13 @@ namespace HALUnitTest
                 Rotating
             }
 
-            public SolarFarmArm(IMyMotorStator stator, List<IMySolarPanel> solarPanels, double minAngle, double maxAngle)
+            public SolarFarmArm(IMyMotorStator stator, IEnumerable<IMySolarPanel> solarPanels, double minAngle, double maxAngle)
             {
                 _stator = stator;
                 _solarPanels = solarPanels;
                 _minAngle = minAngle;
                 _maxAngle = maxAngle;
-                _previousDirections = new List<double>();
+                _previousDirections = new List<int>();
                 _powerProduction = double.NegativeInfinity;
             }
 
@@ -240,34 +257,25 @@ namespace HALUnitTest
                     _previousDirections.Add(_inferredSunDirection);
                     if (IsInLoop())
                     {
-                        return State = SolarFarmArmState.Ready;
+                        return SolarFarmArmState.Ready;
                     }
-                    else
-                    {
-                        _inferredSunDirection = _inferredSunDirection * -1;
-                    }
+                    _inferredSunDirection = _inferredSunDirection * -1;
                 }
 
                 _previousDirections.Add(_inferredSunDirection);
                 _powerProduction = newPowerProduction;
 
                 double statorPlusSun = _stator.Angle + _inferredSunDirection;
-                double newAngle = statorPlusSun > _maxAngle ? _minAngle : statorPlusSun < _minAngle ? _maxAngle : statorPlusSun;
+                var newAngle = statorPlusSun > _maxAngle ? _minAngle : statorPlusSun < _minAngle ? _maxAngle : statorPlusSun;
 
-                RotateStatorToAngle(_stator, newAngle);
-                return State = SolarFarmArmState.Rotating;
+                return RotateStatorToAngle(_stator, newAngle) ? SolarFarmArmState.Ready : SolarFarmArmState.Rotating;
             }
 
             private bool IsInLoop()
             {
                 var count = _previousDirections.Count;
-                if (count > 2)
-                {
-                    if(_previousDirections[count - 1] == _previousDirections[count - 3]){
-                        return true;
-                    }
-                }
-                return false;
+                if (count <= 2) return false;
+                return _previousDirections[count - 1] == _previousDirections[count - 3];
             }
 
             private double GetCurrentPowerProduction()
@@ -275,53 +283,56 @@ namespace HALUnitTest
                 return _solarPanels.Aggregate(0.0, (worker, next) => worker + next.CurrentOutput);
             }
 
-            private bool RotateStatorToAngle(IMyMotorStator stator, double angle)
+            private static bool RotateStatorToAngle(IMyMotorStator stator, double angle)
             {
-                if (!IsAngleCloseEnough(angle, currentAngle: RadiansToDegrees(stator.Angle)))
+                if (IsAngleCloseEnough(angle, RadiansToDegrees(stator.Angle)))
                 {
-                    stator.Torque = STATOR_TORQUE;
-                    stator.TargetVelocity = stator.Angle > angle ? -STATOR_SLOW_RPM : STATOR_SLOW_RPM;
-                    return false;
-                }
-                else
-                {
-                    stator.BrakingTorque = STATOR_BREAKING_TORQUE;
-                    stator.TargetVelocity = 0;
-                    stator.BrakingTorque = STATOR_BREAKING_TORQUE;
+                    stator.BrakingTorque = StatorBreakingTorque;
+                    stator.TargetVelocityRPM = 0;
+                    stator.BrakingTorque = StatorBreakingTorque;
                     return true;
                 }
+                stator.Torque = StatorTorque;
+                stator.TargetVelocityRPM = stator.Angle > angle ? -StatorSlowRpm : StatorSlowRpm;
+                return false;
             }
 
-            private bool IsAngleCloseEnough(double aimAngle, double currentAngle)
+            private static bool IsAngleCloseEnough(double aimAngle, double currentAngle)
             {
                 var angleDiff = Math.Abs(aimAngle - currentAngle);
-                return angleDiff <= ANGLE_PRECISION || angleDiff >= (360 - ANGLE_PRECISION);
+                return angleDiff <= AnglePrecision || angleDiff >= (360 - AnglePrecision);
             }
 
-            private double DegreesToRadians(double degrees)
+            /*private double DegreesToRadians(double degrees)
             {
                 return (Math.PI / 180) * degrees;
-            }
+            }*/
 
-            private double RadiansToDegrees(double radians)
+            private static double RadiansToDegrees(double radians)
             {
                 return (180 / Math.PI) * radians;
             }
         }
 
-        public class Logger{
-            private List<IMyTextPanel> _panels;
+        private class Logger{
+            private readonly List<IMyTextPanel> _panels;
         
             public Logger(List<IMyTextPanel> panels){
-                foreach(var panel in panels){
-                    panel.WritePublicText("", append: false);
-                }
                 _panels = panels;
+                Clear();
             }
 
             public void Log(string message){
                 foreach(var lcd in _panels){
-                    lcd.WritePublicText(message + "\n", append:true);
+                    lcd.WritePublicText(message + "\n", true);
+                }
+            }
+
+            public void Clear()
+            {
+                foreach (var panel in _panels)
+                {
+                    panel.WritePublicText("");
                 }
             }
         }
