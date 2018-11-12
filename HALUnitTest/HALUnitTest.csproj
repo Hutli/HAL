@@ -54,74 +54,101 @@
     <CodeAnalysisRuleSet>ManagedMinimumRules.ruleset</CodeAnalysisRuleSet>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="Sandbox.Common">
+    <Reference Include="Sandbox.Common, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\Sandbox.Common.dll</HintPath>
     </Reference>
-    <Reference Include="Sandbox.Game">
+    <Reference Include="Sandbox.Game, Version=0.1.6883.25033, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\Sandbox.Game.dll</HintPath>
     </Reference>
-    <Reference Include="Sandbox.Graphics">
+    <Reference Include="Sandbox.Graphics, Version=0.1.6883.25030, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\Sandbox.Graphics.dll</HintPath>
     </Reference>
-    <Reference Include="SpaceEngineers.Game">
+    <Reference Include="Sandbox.RenderDirect, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>lib\Sandbox.RenderDirect.dll</HintPath>
+    </Reference>
+    <Reference Include="SpaceEngineers.Game, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\SpaceEngineers.Game.dll</HintPath>
     </Reference>
-    <Reference Include="SpaceEngineers.ObjectBuilders">
+    <Reference Include="SpaceEngineers.ObjectBuilders, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\SpaceEngineers.ObjectBuilders.dll</HintPath>
     </Reference>
-    <Reference Include="SpaceEngineers.ObjectBuilders.XmlSerializers">
+    <Reference Include="SpaceEngineers.ObjectBuilders.XmlSerializers, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\SpaceEngineers.ObjectBuilders.XmlSerializers.dll</HintPath>
     </Reference>
     <Reference Include="System" />
-    <Reference Include="VRage">
+    <Reference Include="VRage, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\VRage.dll</HintPath>
     </Reference>
-    <Reference Include="VRage.Ansel">
+    <Reference Include="VRage.Ansel, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\VRage.Ansel.dll</HintPath>
     </Reference>
-    <Reference Include="VRage.Audio">
+    <Reference Include="VRage.Audio, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\VRage.Audio.dll</HintPath>
     </Reference>
-    <Reference Include="VRage.Game">
+    <Reference Include="VRage.Game, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\VRage.Game.dll</HintPath>
     </Reference>
-    <Reference Include="VRage.Game.XmlSerializers">
+    <Reference Include="VRage.Game.XmlSerializers, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\VRage.Game.XmlSerializers.dll</HintPath>
     </Reference>
-    <Reference Include="VRage.Input">
+    <Reference Include="VRage.Input, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\VRage.Input.dll</HintPath>
     </Reference>
-    <Reference Include="VRage.Library">
+    <Reference Include="VRage.Library, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\VRage.Library.dll</HintPath>
     </Reference>
-    <Reference Include="VRage.Math">
+    <Reference Include="VRage.Math, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\VRage.Math.dll</HintPath>
     </Reference>
-    <Reference Include="VRage.Math.XmlSerializers">
+    <Reference Include="VRage.Math.XmlSerializers, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\VRage.Math.XmlSerializers.dll</HintPath>
     </Reference>
-    <Reference Include="VRage.Native">
+    <Reference Include="VRage.Native, Version=0.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\VRage.Native.dll</HintPath>
     </Reference>
-    <Reference Include="VRage.NativeAftermath">
+    <Reference Include="VRage.NativeAftermath, Version=0.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\VRage.NativeAftermath.dll</HintPath>
     </Reference>
-    <Reference Include="VRage.OpenVRWrapper">
+    <Reference Include="VRage.OpenVRWrapper, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\VRage.OpenVRWrapper.dll</HintPath>
     </Reference>
-    <Reference Include="VRage.Render">
+    <Reference Include="VRage.Render, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\VRage.Render.dll</HintPath>
     </Reference>
-    <Reference Include="VRage.Render11">
+    <Reference Include="VRage.Render11, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\VRage.Render11.dll</HintPath>
     </Reference>
-    <Reference Include="VRage.Scripting">
+    <Reference Include="VRage.Scripting, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\VRage.Scripting.dll</HintPath>
     </Reference>
-    <Reference Include="VRage.Steam">
+    <Reference Include="VRage.Steam, Version=1.0.0.0, Culture=neutral, processorArchitecture=AMD64">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\VRage.Steam.dll</HintPath>
     </Reference>
-    <Reference Include="VRage.XmlSerializers">
+    <Reference Include="VRage.XmlSerializers, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\VRage.XmlSerializers.dll</HintPath>
     </Reference>
   </ItemGroup>
@@ -138,10 +165,13 @@
     </Otherwise>
   </Choose>
   <ItemGroup>
-    <Compile Include="HAL.cs" />
+    <Compile Include="Legacy\HAL.cs" />
     <Compile Include="SolarRotator3000.cs" />
     <Compile Include="UnitTest1.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <WCFMetadata Include="Connected Services\" />
   </ItemGroup>
   <Choose>
     <When Condition="'$(VisualStudioVersion)' == '10.0' And '$(IsCodedUITest)' == 'True'">

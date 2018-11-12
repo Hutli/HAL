@@ -25,7 +25,7 @@ namespace HALUnitTest
         private const double PlanetMinAngle = -85;
         private const double PlanetMaxAngle = 85;
         private const UpdateFrequency ErrorUpdateFrequency = UpdateFrequency.None;
-        private const UpdateFrequency IdleUpdateFrequency = UpdateFrequency.Update100;
+        private const UpdateFrequency IdleUpdateFrequency = UpdateFrequency.Update10;
         private const UpdateFrequency WorkingUpdateFrequency = UpdateFrequency.Update1;
         private const int PlanetInferFrequency = 0;
         private const int PlanetInitialInferredSunDirection = 1;
@@ -34,7 +34,6 @@ namespace HALUnitTest
 
         public Program()
         {
-            // Configure this program to run the Main method every 100 update ticks
             Runtime.UpdateFrequency = IdleUpdateFrequency;
 
             var stators = FindBlocksOfType<IMyMotorStator>(NameLike);
@@ -44,19 +43,7 @@ namespace HALUnitTest
             _solarFarm = new SolarFarm(stators, solarPanels, PlanetInferFrequency, PlanetInitialInferredSunDirection, PlanetMinAngle, PlanetMaxAngle);
             _logger = new Logger(lcdPanels);
         }
-
-        //private double? currentAimAngle = null;
-        //private double lastPowerOutput = 0.0;
-
-        /*public enum CycleStatus {
-            /// Sun is down, to rise
-            SunToRise,
-            SunIsRising,
-            Rotating
-        }*/
-
-        //private CycleStatus cycleStatus = SunToRise;
-
+        
         public void Main()
         {
             var solarFarmState = _solarFarm.Run();
@@ -64,10 +51,10 @@ namespace HALUnitTest
             _logger.Log($"Solar Farm State: {solarFarmState}");
             switch (solarFarmState)
             {
-                case SolarFarm.SolarFarmState.Ready:
+                case SolarFarm.SolarFarmState.Idle:
                     Runtime.UpdateFrequency = IdleUpdateFrequency;
                     break;
-                case SolarFarm.SolarFarmState.Rotating:
+                case SolarFarm.SolarFarmState.Working:
                     Runtime.UpdateFrequency = WorkingUpdateFrequency;
                     break;
                 default:
@@ -75,27 +62,6 @@ namespace HALUnitTest
                     _logger.Log("Unknown state, terminating execution");
                     break;
             }
-
-            //cycleStatus = InferCycleStatus();
-            //logger.Log($"sunCycleStatus: {cycleStatus}");
-            //ReactOnSunCycleStatus(cycleStatus);
-
-            //double angleDegress;
-            //if (double.TryParse(argument, out angleDegress) && angleDegress <= 90 && angleDegress >= -90)
-            //{
-            //    Runtime.UpdateFrequency = UPDATE_FREQUENCY;
-            //    currentAimAngle = angleDegress;
-            //}
-
-            //if (currentAimAngle != null)
-            //{
-                
-            //    bool isDone = RotateToAngle(stators, currentAimAngle.Value);
-            //    if (isDone)
-            //    {
-            //        Runtime.UpdateFrequency = UpdateFrequency.None;
-            //    }
-            //}
         }
 
         private List<T> FindBlocksOfType<T>(string nameLike) where T : class
@@ -107,105 +73,14 @@ namespace HALUnitTest
             return blocks.Where(x => ((IMyTerminalBlock)x).CustomName.Contains(nameLike)).ToList();
         }
 
-        /*private void ReactOnSunCycleStatus(CycleStatus cycleStatus)
-        {
-            var solarPanels = FindBlocksOfType<IMySolarPanel>(NAME_LIKE);
-            var stators = FindBlocksOfType<IMyMotorStator>(NAME_LIKE);
-            switch (cycleStatus) {
-                case CycleStatus.SunToRise:
-                    // reset back to 0 degrees, so we are ready for sunrise
-                    RotateToAngle(stators, 0);
-                    break;
-                case CycleStatus.SunIsRising:
-                    // We want to align with the sun, if the power output is not increasing
-                    var curPowerOutput = solarPanels[0].CurrentOutput;
-                    if (curPowerOutput < lastPowerOutput) {
-                        // change 1 degree, following the sun
-                        IncreaseRotation(stators, 1);
-                    }
-
-                    lastPowerOutput = curPowerOutput;
-                    break;
-            }
-        }
-
-        private CycleStatus InferCycleStatus() {
-            var stators = FindBlocksOfType<IMyMotorStator>(NAME_LIKE);
-            var solarPanels = FindBlocksOfType<IMySolarPanel>(NAME_LIKE);
-
-            var currentPanelOutput = solarPanels[0].CurrentOutput;
-
-            var currentStatorAngleDeg = RadiansToDegrees(stators[0].Angle);
-            // if we are at the end of the sun cycle(>= 85)
-            if (currentStatorAngleDeg >= 85)
-            {
-                return CycleStatus.SunToRise;
-            }
-
-            // if we are waiting for the sun to rise, and we detect power generation, the sun must be rising
-            if (cycleStatus == CycleStatus.SunToRise && currentPanelOutput >= 0) {
-                return CycleStatus.SunIsRising;
-            }
-
-            // no other case than the current is detected
-            return cycleStatus;
-        }
-
-        public double DegreesToRadians(double degrees) {
-            return (Math.PI / 180) * degrees;
-        }
-
-        public double RadiansToDegrees(double radians)
-        {
-            return (180 / Math.PI) * radians;
-        }*/
-
-        /// returns whether we have reached our aim angle
-        /*private bool RotateToAngle(IEnumerable<IMyMotorStator> stators, double angle)
-        {
-            cycleStatus = CycleStatus.Rotating;
-            var returnBool = true;
-            foreach(var x in stators)
-            {
-                if (!IsAngleCloseEnough(angle, RadiansToDegrees(x.Angle)))
-                {
-                    x.RotorLock = false;
-                    x.Torque = STATOR_TORQUE;
-                    x.TargetVelocityRPM = x.Angle > angle ? -STATOR_SLOW_RPM : STATOR_SLOW_RPM;
-                    returnBool = false;
-                }
-                else
-                {
-                    x.RotorLock = true;
-                    x.BrakingTorque = STATOR_BREAKING_TORQUE;
-                    x.TargetVelocityRPM = 0;
-                    x.BrakingTorque = STATOR_BREAKING_TORQUE;
-                }
-            }
-            return returnBool;
-        }*/
-
-        //private void IncreaseRotation(IEnumerable<IMyMotorStator> stators, double increaseByDeg) {
-        //    var curAngleDeg = RadiansToDegrees(stators[0].Angle);
-        //    RotateToAngle(stators, curAngleDeg + increaseByDeg);
-        //}
-
-        //private bool IsAngleCloseEnough(double aimAngle, double currentAngle)
-        //{
-        //    var angleDiff = Math.Abs(aimAngle - currentAngle);
-        //    logger.Log($"Aim Angle: {aimAngle}");
-        //    logger.Log($"Current Angle: {currentAngle}");
-        //    return angleDiff <= ANGLE_PRECISION || angleDiff >= (360 - ANGLE_PRECISION);
-        //}
-
         public class SolarFarm
         {
             private readonly IEnumerable<SolarFarmArm> _solarFarmArms;
 
             public enum SolarFarmState
             {
-                Ready,
-                Rotating
+                Idle,
+                Working
             }
 
             public SolarFarm(IEnumerable<IMyMotorStator> stators, IEnumerable<IMySolarPanel> solarPanels, int inferFrequency, int initialInferredSunDirection, double minAngle, double maxAngle)
@@ -215,7 +90,8 @@ namespace HALUnitTest
 
             public SolarFarmState Run()
             {
-                return _solarFarmArms.Aggregate(SolarFarmState.Ready, (worker, next) => next.Run() == SolarFarmArm.SolarFarmArmState.Rotating ? SolarFarmState.Rotating : worker);
+                // If any solar farm arm is not idle the whole solar farm is set as working
+                return _solarFarmArms.Any(s => s.Run() != SolarFarmArm.SolarFarmArmState.Idle) ? SolarFarmState.Working : SolarFarmState.Idle;
             }
 
             private static IEnumerable<SolarFarmArm> CreateArms(IEnumerable<IMyMotorStator> stators, IEnumerable<IMySolarPanel> solarPanels, int inferFrequency, int initialInferredSunDirection, double minAngle, double maxAngle)
@@ -247,7 +123,7 @@ namespace HALUnitTest
 
             public enum SolarFarmArmState
             {
-                Ready,
+                Idle,
                 Rotating,
                 Inferring
             }
@@ -261,7 +137,7 @@ namespace HALUnitTest
                 _previousDirections = new List<int>();
                 _powerProduction = double.NegativeInfinity;
                 _inferFrequency = inferFrequency;
-                _state = SolarFarmArmState.Ready;
+                _state = SolarFarmArmState.Idle;
                 _inferredSunDirection = initialInferredSunDirection;
             }
 
@@ -272,7 +148,7 @@ namespace HALUnitTest
 
                 switch (_state)
                 {
-                    case SolarFarmArmState.Ready:
+                    case SolarFarmArmState.Idle:
                         if (oldPowerProduction > _powerProduction) // Power production no longer optimal, starting rotation
                         {
                             _state = SolarFarmArmState.Rotating;
@@ -282,12 +158,11 @@ namespace HALUnitTest
                     case SolarFarmArmState.Inferring:
                         _inferredSunDirection = InferSunDirection();
                         _previousDirections.Add(_inferredSunDirection);
-                        _state = SolarFarmArmState.Ready;
+                        _state = SolarFarmArmState.Idle;
                         break;
 
                     case SolarFarmArmState.Rotating:
-                        if (_powerProduction < oldPowerProduction
-                        ) // Optimal power production reached, stopping rotation
+                        if (_powerProduction < oldPowerProduction) // Optimal power production reached, stopping rotation
                         {
                             StopStator(_stator);
                             if (ShouldInferSunDirection())
@@ -296,12 +171,11 @@ namespace HALUnitTest
                                 RotateStatorToAngle(_stator, _currentAimAngle);
                                 _state = SolarFarmArmState.Inferring;
                             }
-                            _state = SolarFarmArmState.Ready;
+                            _state = SolarFarmArmState.Idle;
                         }
                         else // Power production still suppar, continue rotating
                         {
-                            // Aim angle reached, setting new aim angle rotating further
-                            if (RotateStatorToAngle(_stator, _currentAimAngle))
+                            if (RotateStatorToAngle(_stator, _currentAimAngle)) // Aim angle reached, setting new aim angle
                             {
                                 double statorPlusSun = _stator.Angle + _inferredSunDirection;
                                 _currentAimAngle = statorPlusSun > _maxAngle
@@ -312,6 +186,8 @@ namespace HALUnitTest
                             }
                         }
                         break;
+                    default:
+                        throw new ArgumentOutOfRangeException($"New unhandled state with name \"{_state}\" was added to SolarFarmArmState");
                 }
                 return _state;
             }
