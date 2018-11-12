@@ -139,7 +139,7 @@
   </Choose>
   <ItemGroup>
     <Compile Include="HAL.cs" />
-    <Compile Include="solarRotator3000.cs" />
+    <Compile Include="SolarRotator3000.cs" />
     <Compile Include="UnitTest1.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

@@ -23,7 +23,7 @@ namespace HALUnitTest {
             MyGridTerminalSystem GridTerminalSystem = new MyGridTerminalSystem();
                        
             HAL.SetGridTerminalSystem(GridTerminalSystem);
-            HAL.Main("");
+            HAL.Main();
         }
 
         /*public void MainOnIrrelevantGrid() {
