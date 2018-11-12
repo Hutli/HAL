@@ -1,11 +1,15 @@
-﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using System;
+using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Sandbox.Game.GameSystems;
 
-namespace HALUnitTest {
+namespace HALUnitTest.Test
+{
     [TestClass]
-    public class UnitTest1 {
+    public class SolarRotator3000Test
+    {
         [TestMethod]
-        public void MainInEmptyWorld() {
+        public void BuildTest()
+        {
             var hal = new Program();
             var gridTerminalSystem = new MyGridTerminalSystem();
 
