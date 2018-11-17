@@ -40,15 +40,18 @@ namespace HALUnitTest
             var solarPanels = FindBlocksOfType<IMySolarPanel>(NameLike);
             var lcdPanels = FindBlocksOfType<IMyTextPanel>(NameLike);
 
-            _solarFarm = new SolarFarm(stators, solarPanels, PlanetInferFrequency, PlanetInitialInferredSunDirection, PlanetMinAngle, PlanetMaxAngle);
             _logger = new Logger(lcdPanels);
+
+            _solarFarm = new SolarFarm(stators, solarPanels, PlanetInferFrequency, PlanetInitialInferredSunDirection, PlanetMinAngle, PlanetMaxAngle, _logger);
         }
         
-        public void Main()
+        public void Main(string argument)
         {
-            var solarFarmState = _solarFarm.Run();
             _logger.Clear();
-            _logger.Log($"Solar Farm State: {solarFarmState}");
+            var solarFarmState = _solarFarm.Run();
+            _logger.Log($"Solar Farm {solarFarmState} and running at {Runtime.UpdateFrequency}");
+            _logger.Log($"Number of Salor Farm Arms: {_solarFarm.CountArms()}");
+
             switch (solarFarmState)
             {
                 case SolarFarm.SolarFarmState.Idle:
@@ -75,7 +78,13 @@ namespace HALUnitTest
 
         public class SolarFarm
         {
+            private readonly Logger _logger;
             private readonly IEnumerable<SolarFarmArm> _solarFarmArms;
+
+            public int CountArms()
+            {
+                return _solarFarmArms.Count();
+            }
 
             public enum SolarFarmState
             {
@@ -83,9 +92,11 @@ namespace HALUnitTest
                 Working
             }
 
-            public SolarFarm(IEnumerable<IMyMotorStator> stators, IEnumerable<IMySolarPanel> solarPanels, int inferFrequency, int initialInferredSunDirection, double minAngle, double maxAngle)
+            public SolarFarm(IEnumerable<IMyMotorStator> stators, IEnumerable<IMySolarPanel> solarPanels, int inferFrequency, int initialInferredSunDirection, double minAngle, double maxAngle, Logger logger)
             {
-                _solarFarmArms = CreateArms(stators, solarPanels, inferFrequency, initialInferredSunDirection, minAngle, maxAngle);
+                _logger = logger;
+                _solarFarmArms = CreateArms(stators, solarPanels, inferFrequency, initialInferredSunDirection, minAngle, maxAngle, logger);
+                _logger.Log("Solar farm created");
             }
 
             public SolarFarmState Run()
@@ -94,16 +105,16 @@ namespace HALUnitTest
                 return _solarFarmArms.Any(s => s.Run() != SolarFarmArm.SolarFarmArmState.Idle) ? SolarFarmState.Working : SolarFarmState.Idle;
             }
 
-            private static IEnumerable<SolarFarmArm> CreateArms(IEnumerable<IMyMotorStator> stators, IEnumerable<IMySolarPanel> solarPanels, int inferFrequency, int initialInferredSunDirection, double minAngle, double maxAngle)
+            private IEnumerable<SolarFarmArm> CreateArms(IEnumerable<IMyMotorStator> stators, IEnumerable<IMySolarPanel> solarPanels, int inferFrequency, int initialInferredSunDirection, double minAngle, double maxAngle, Logger logger)
             {
-                var getGroupRegex = new Regex($"(?<={NameLike} ).*?(?=])");
+                var getGroupRegex = new System.Text.RegularExpressions.Regex($"(?<=\\{NameLike} ).*?(?=])");
                 return stators.Select(stator =>
                 {
-                    var group = getGroupRegex.Match(stator.Name);
-                    var groupTagRegex = new Regex($"({NameLike} {group}\\])");
-                    var filteredSolarPanels = solarPanels.Where(solarPanel => groupTagRegex.IsMatch(solarPanel.Name));
-                    return new SolarFarmArm(stator, filteredSolarPanels, inferFrequency, initialInferredSunDirection, minAngle, maxAngle);
-                });
+                    var group = getGroupRegex.Match(stator.CustomName);
+                    var groupTagRegex = new System.Text.RegularExpressions.Regex($"(\\{NameLike} {group}\\])");
+                    var filteredSolarPanels = solarPanels.Where(solarPanel => groupTagRegex.IsMatch(solarPanel.CustomName));
+                    return new SolarFarmArm(group.ToString(), stator, filteredSolarPanels, inferFrequency, initialInferredSunDirection, minAngle, maxAngle, logger);
+                }).Where(stator => stator != null).ToList();
             }
         }
 
@@ -118,8 +129,10 @@ namespace HALUnitTest
             private readonly List<int> _previousDirections;
             private readonly int _inferFrequency;
             private double _currentAimAngle;
-
+            private Logger _logger;
             private SolarFarmArmState _state;
+
+            public string Name { get; }
 
             public enum SolarFarmArmState
             {
@@ -128,8 +141,9 @@ namespace HALUnitTest
                 Inferring
             }
 
-            public SolarFarmArm(IMyMotorStator stator, IEnumerable<IMySolarPanel> solarPanels, int inferFrequency, int initialInferredSunDirection, double minAngle, double maxAngle)
+            public SolarFarmArm(string groupName, IMyMotorStator stator, IEnumerable<IMySolarPanel> solarPanels, int inferFrequency, int initialInferredSunDirection, double minAngle, double maxAngle, Logger logger)
             {
+                Name = groupName;
                 _stator = stator;
                 _solarPanels = solarPanels;
                 _minAngle = minAngle;
@@ -139,12 +153,17 @@ namespace HALUnitTest
                 _inferFrequency = inferFrequency;
                 _state = SolarFarmArmState.Idle;
                 _inferredSunDirection = initialInferredSunDirection;
+                _logger = logger;
             }
 
             public SolarFarmArmState Run()
             {
                 var oldPowerProduction = _powerProduction;
                 _powerProduction = GetCurrentPowerProduction();
+
+                _logger.Log($"Solar farm arm {Name}");
+                _logger.Log($"Old pow: {string.Format("{0:N4}", oldPowerProduction)} | New pow {string.Format("{0:N4}", _powerProduction)}");
+                _logger.Log($"Solar panels: {_solarPanels.Count()}");
 
                 switch (_state)
                 {
@@ -187,7 +206,7 @@ namespace HALUnitTest
                         }
                         break;
                     default:
-                        throw new ArgumentOutOfRangeException($"New unhandled state with name \"{_state}\" was added to SolarFarmArmState");
+                        throw new Exception($"New unhandled state with name \"{_state}\" was added to SolarFarmArmState");
                 }
                 return _state;
             }
@@ -254,7 +273,7 @@ namespace HALUnitTest
             }
         }
 
-        private class Logger{
+        public class Logger{
             private readonly List<IMyTextPanel> _panels;
         
             public Logger(List<IMyTextPanel> panels){
