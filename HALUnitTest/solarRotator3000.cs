@@ -15,6 +15,9 @@ namespace HALUnitTest
             GridTerminalSystem = gridTerminalSystem;
         }
         #endregion
+        
+        
+        
         //To put your code in a PB copy from this comment...
 
         private const double AnglePrecision = 0.1;
@@ -25,12 +28,14 @@ namespace HALUnitTest
         private const double PlanetMinAngle = -85;
         private const double PlanetMaxAngle = 85;
         private const UpdateFrequency ErrorUpdateFrequency = UpdateFrequency.None;
-        private const UpdateFrequency IdleUpdateFrequency = UpdateFrequency.Update10;
+        private const UpdateFrequency IdleUpdateFrequency = UpdateFrequency.Update100;
         private const UpdateFrequency WorkingUpdateFrequency = UpdateFrequency.Update1;
         private const int PlanetInferFrequency = 0;
         private const int PlanetInitialInferredSunDirection = 1;
+        private const string initiationStringArgument = "Initiate";
         private readonly SolarFarm _solarFarm;
         private readonly Logger _logger;
+        private double _overrideAngle;
 
         public Program()
         {
@@ -47,10 +52,19 @@ namespace HALUnitTest
         
         public void Main(string argument)
         {
+            double angle;
+            if (double.TryParse(argument, out angle))
+            {
+                _overrideAngle = angle;
+            } else if (argument == initiationStringArgument)
+            {
+                _overrideAngle = double.NaN;
+            }
+
             _logger.Clear();
-            var solarFarmState = _solarFarm.Run();
-            _logger.Log($"Solar Farm {solarFarmState} and running at {Runtime.UpdateFrequency}");
+            _logger.Log($"Override Angle: {_overrideAngle}");
             _logger.Log($"Number of Salor Farm Arms: {_solarFarm.CountArms()}");
+            var solarFarmState = _solarFarm.Run(_overrideAngle);
 
             switch (solarFarmState)
             {
@@ -99,10 +113,11 @@ namespace HALUnitTest
                 _logger.Log("Solar farm created");
             }
 
-            public SolarFarmState Run()
+            public SolarFarmState Run(double overrideAngle)
             {
                 // If any solar farm arm is not idle the whole solar farm is set as working
-                return _solarFarmArms.Any(s => s.Run() != SolarFarmArm.SolarFarmArmState.Idle) ? SolarFarmState.Working : SolarFarmState.Idle;
+                var states = _solarFarmArms.Select(s => s.Run(overrideAngle)).ToList();
+                return states.Any(s => s != SolarFarmArm.SolarFarmArmState.Idle) ? SolarFarmState.Working : SolarFarmState.Idle;
             }
 
             private IEnumerable<SolarFarmArm> CreateArms(IEnumerable<IMyMotorStator> stators, IEnumerable<IMySolarPanel> solarPanels, int inferFrequency, int initialInferredSunDirection, double minAngle, double maxAngle, Logger logger)
@@ -131,6 +146,7 @@ namespace HALUnitTest
             private double _currentAimAngle;
             private Logger _logger;
             private SolarFarmArmState _state;
+            private double _overrideAngle;
 
             public string Name { get; }
 
@@ -156,19 +172,21 @@ namespace HALUnitTest
                 _logger = logger;
             }
 
-            public SolarFarmArmState Run()
+            public SolarFarmArmState Run(double overrideAngle)
             {
+                _overrideAngle = overrideAngle;
                 var oldPowerProduction = _powerProduction;
                 _powerProduction = GetCurrentPowerProduction();
 
-                _logger.Log($"Solar farm arm {Name}");
+                _logger.Log($"Solar farm arm {Name} with state {_state}");
+                _logger.Log($"Override angle: {_overrideAngle} | Current angle: {_stator.Angle}");
                 _logger.Log($"Old pow: {string.Format("{0:N4}", oldPowerProduction)} | New pow {string.Format("{0:N4}", _powerProduction)}");
                 _logger.Log($"Solar panels: {_solarPanels.Count()}");
 
                 switch (_state)
                 {
                     case SolarFarmArmState.Idle:
-                        if (oldPowerProduction > _powerProduction) // Power production no longer optimal, starting rotation
+                        if (!double.IsNaN(_overrideAngle) || oldPowerProduction > _powerProduction) // Power production no longer optimal, starting rotation
                         {
                             _state = SolarFarmArmState.Rotating;
                         }
@@ -181,13 +199,20 @@ namespace HALUnitTest
                         break;
 
                     case SolarFarmArmState.Rotating:
-                        if (_powerProduction < oldPowerProduction) // Optimal power production reached, stopping rotation
+                        if (!double.IsNaN(_overrideAngle)) // Angle overridden skipping normal oprerations
+                        {
+                            _logger.Log($"Angle overridden rotating to {_overrideAngle}");
+                            if (RotateStatorToAngle(_stator, _overrideAngle))
+                            {
+                                _state = SolarFarmArmState.Idle;
+                            }
+                        }
+                        else if (_powerProduction < oldPowerProduction) // Optimal power production reached, stopping rotation
                         {
                             StopStator(_stator);
                             if (ShouldInferSunDirection())
                             {
                                 _currentAimAngle = _stator.Angle + -1 * _inferredSunDirection;
-                                RotateStatorToAngle(_stator, _currentAimAngle);
                                 _state = SolarFarmArmState.Inferring;
                             }
                             _state = SolarFarmArmState.Idle;
