@@ -177,16 +177,18 @@ namespace HALUnitTest
                 _overrideAngle = overrideAngle;
                 var oldPowerProduction = _powerProduction;
                 _powerProduction = GetCurrentPowerProduction();
+                var currentAngle = RadiansToDegrees(_stator.Angle);
 
                 _logger.Log($"Solar farm arm {Name} with state {_state}");
-                _logger.Log($"Override angle: {_overrideAngle} | Current angle: {_stator.Angle}");
+                _logger.Log($"Override angle: {_overrideAngle} | Current angle: {currentAngle}");
                 _logger.Log($"Old pow: {string.Format("{0:N4}", oldPowerProduction)} | New pow {string.Format("{0:N4}", _powerProduction)}");
                 _logger.Log($"Solar panels: {_solarPanels.Count()}");
 
                 switch (_state)
                 {
                     case SolarFarmArmState.Idle:
-                        if (!double.IsNaN(_overrideAngle) || oldPowerProduction > _powerProduction) // Power production no longer optimal, starting rotation
+                        if (!double.IsNaN(_overrideAngle) && !IsAngleCloseEnough(_overrideAngle, currentAngle) || // Angle overridden skipping normal oprerations
+                            double.IsNaN(_overrideAngle) && oldPowerProduction > _powerProduction) // Power production no longer optimal, starting rotation
                         {
                             _state = SolarFarmArmState.Rotating;
                         }
@@ -262,15 +264,16 @@ namespace HALUnitTest
                 return _solarPanels.Aggregate(0.0, (worker, next) => worker + next.CurrentOutput);
             }
 
-            private static bool RotateStatorToAngle(IMyMotorStator stator, double angle)
+            private bool RotateStatorToAngle(IMyMotorStator stator, double angle)
             {
-                if (IsAngleCloseEnough(angle, RadiansToDegrees(stator.Angle)))
+                var currentAngle = RadiansToDegrees(stator.Angle);
+                if (IsAngleCloseEnough(angle, currentAngle))
                 {
                     StopStator(stator);
                     return true;
                 }
                 stator.Torque = StatorTorque;
-                stator.TargetVelocityRPM = stator.Angle > angle ? -StatorSlowRpm : StatorSlowRpm;
+                stator.TargetVelocityRPM = currentAngle - angle < 180 && currentAngle - angle > 0 ? -StatorSlowRpm : StatorSlowRpm;
                 return false;
             }
 
@@ -281,10 +284,11 @@ namespace HALUnitTest
                 stator.BrakingTorque = StatorBreakingTorque;
             }
 
-            private static bool IsAngleCloseEnough(double aimAngle, double currentAngle)
+            private bool IsAngleCloseEnough(double aimAngle, double currentAngle)
             {
                 var angleDiff = Math.Abs(aimAngle - currentAngle);
-                return angleDiff <= AnglePrecision || angleDiff >= (360 - AnglePrecision);
+                _logger.Log($"Angle diff: {angleDiff}");
+                return angleDiff <= AnglePrecision;
             }
 
             /*private double DegreesToRadians(double degrees)
