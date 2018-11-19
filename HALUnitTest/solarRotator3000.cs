@@ -14,6 +14,12 @@ namespace HALUnitTest
         {
             GridTerminalSystem = gridTerminalSystem;
         }
+
+        public void SetRuntime(IMyGridProgramRuntimeInfo runtime)
+        {
+            Runtime = runtime;
+        }
+
         #endregion
         
         
@@ -33,25 +39,22 @@ namespace HALUnitTest
         private const int PlanetInferFrequency = 0;
         private const int PlanetInitialInferredSunDirection = 1;
         private const string initiationStringArgument = "Initiate";
-        private readonly SolarFarm _solarFarm;
-        private readonly Logger _logger;
+        private SolarFarm _solarFarm;
+        private Logger _logger;
         private double _overrideAngle;
 
         public Program()
+        {}
+        
+        public void Main(string argument)
         {
-            Runtime.UpdateFrequency = IdleUpdateFrequency;
-
             var stators = FindBlocksOfType<IMyMotorStator>(NameLike);
             var solarPanels = FindBlocksOfType<IMySolarPanel>(NameLike);
             var lcdPanels = FindBlocksOfType<IMyTextPanel>(NameLike);
 
             _logger = new Logger(lcdPanels);
-
             _solarFarm = new SolarFarm(stators, solarPanels, PlanetInferFrequency, PlanetInitialInferredSunDirection, PlanetMinAngle, PlanetMaxAngle, _logger);
-        }
-        
-        public void Main(string argument)
-        {
+
             double angle;
             if (double.TryParse(argument, out angle))
             {
